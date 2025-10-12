@@ -1,6 +1,6 @@
 import { PaymentRequest, PaymentResponse } from './types';
 
-const API_BASE_URL = 'https://lixie-payment-iframe-mercantil-o4ep.vercel.app';
+const API_BASE_URL = 'https://connect-api-y3jc.onrender.com';
 
 export class PaymentApi {
   static async processPayment(paymentData: PaymentRequest): Promise<PaymentResponse> {
