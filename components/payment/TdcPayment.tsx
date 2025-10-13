@@ -12,6 +12,7 @@ interface TdcPaymentProps {
 }
 
 type PaymentStatus = 'idle' | 'loading' | 'success' | 'error';
+type IdType = 'V' | 'E' | 'J';
 
 export default function TdcPayment({ clientData, onSuccess, onError, embedded = false, mode = 'standalone' }: TdcPaymentProps) {
 
@@ -19,12 +20,29 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
   const [cardNumber, setCardNumber] = useState('');
   const [cvv, setCvv] = useState('');
   const [expirationDate, setExpirationDate] = useState('');
-  const [customerId, setCustomerId] = useState(clientData.customerId || '');
+  const [idType, setIdType] = useState<IdType>('V');
+  const [idNumber, setIdNumber] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState(clientData.invoiceNumber || clientData.orderId || '');
   const [responseMessage, setResponseMessage] = useState('');
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [rawRequestData, setRawRequestData] = useState<any>(null);
   const [rawResponseData, setRawResponseData] = useState<any>(null);
+
+  // Extraer customerId existente si viene del clientData
+  useState(() => {
+    if (clientData.customerId) {
+      // Intentar parsear el customerId existente para prellenar los campos
+      const match = clientData.customerId.match(/^([VEJ])(\d+)$/);
+      if (match) {
+        setIdType(match[1] as IdType);
+        setIdNumber(match[2]);
+      } else {
+        // Si no coincide el patrón, usar valor por defecto
+        setIdType('V');
+        setIdNumber(clientData.customerId.replace(/[^0-9]/g, ''));
+      }
+    }
+  });
 
   // Funciones de formateo
   const formatCardNumber = (value: string) => {
@@ -49,17 +67,26 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
     return displayDate;
   };
 
-  
-  const handlePayment = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setPaymentStatus('loading');
-  setResponseMessage('');
-  setRawResponseData(null);
+  // Función para unir tipo y número de cédula
+  const buildCustomerId = (type: IdType, number: string): string => {
+    return `${type}${number}`;
+  };
 
-  try {
-    // Validaciones básicas del frontend
-      if (!cardNumber || !cvv || !expirationDate || !customerId || !invoiceNumber) {
+  const handlePayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaymentStatus('loading');
+    setResponseMessage('');
+    setRawResponseData(null);
+
+    try {
+      // Validaciones básicas del frontend
+      if (!cardNumber || !cvv || !expirationDate || !idNumber || !invoiceNumber) {
         throw new Error('Por favor complete todos los campos');
+      }
+
+      // Validar que el número de cédula tenga entre 6 y 10 dígitos
+      if (idNumber.length < 6 || idNumber.length > 10) {
+        throw new Error('La cédula debe tener entre 6 y 10 dígitos');
       }
 
       const apiExpirationDate = convertToApiDateFormat(expirationDate);
@@ -68,65 +95,70 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         throw new Error('Formato de fecha incorrecto. Use AAAA/MM (ej: 2027/10)');
       }
 
-    // Preparar datos para el API
-    const paymentData: PaymentRequest = {
-       encryptedClient: clientData.encryptedClient,
+      // Construir el customerId uniendo tipo y número
+      const customerId = buildCustomerId(idType, idNumber);
+
+      // Preparar datos para el API
+      const paymentData: PaymentRequest = {
+        encryptedClient: clientData.encryptedClient,
         encryptedMerchant: clientData.encryptedMerchant,
         encryptedKey: clientData.encryptedKey,
         cardNumber: cardNumber.replace(/\s/g, ''),
         cvv: cvv.replace(/\s/g, ''),
         expirationDate: apiExpirationDate,
         customerId: customerId,
-        invoiceNumber: invoiceNumber, // ← Usar el valor editable
+        invoiceNumber: invoiceNumber,
         amount: clientData.amount,
         paymentMethod: 'tdc'
-    };
+      };
 
-    // Guardar datos de request para desarrollo
-    setRawRequestData(paymentData);
+      // Guardar datos de request para desarrollo
+      setRawRequestData(paymentData);
 
-    // Llamar al API
-    const response: PaymentResponse = await PaymentApi.processPayment(paymentData);
-    
-    // Guardar respuesta para desarrollo
-    setRawResponseData(response);
-    
-    // Pago exitoso
-    setPaymentStatus('success');
-    setResponseMessage(response.message);
-    
-    setTimeout(() => {
-      onSuccess(response);
-    }, 2000);
-    
-  } catch (error) {
-    setPaymentStatus('error');
-    
-    // Guardar error para desarrollo
-    setRawResponseData(error instanceof Error ? { error: error.message } : error);
-    
-    // EXTRAER EL MENSAJE ESPECÍFICO DEL ERROR
-    let errorMessage = 'Error procesando el pago';
-    
-    if (error instanceof Error) {
-      // Usar directamente el mensaje del error (que ahora viene formateado del API)
-      errorMessage = error.message;
+      // Llamar al API
+      const response: PaymentResponse = await PaymentApi.processPayment(paymentData);
       
-      // Solo para errores de validación del frontend, mantener mensajes específicos
-      if (error.message.includes('complete todos los campos')) {
-        errorMessage = 'Por favor complete todos los campos requeridos';
-      } else if (error.message.includes('Formato de fecha incorrecto')) {
-        errorMessage = 'Formato de fecha incorrecto. Use AAAA/MM (ej: 2027/10)';
-      } else if (error.message.includes('Número de factura no disponible')) {
-        errorMessage = 'Número de factura no disponible';
+      // Guardar respuesta para desarrollo
+      setRawResponseData(response);
+      
+      // Pago exitoso
+      setPaymentStatus('success');
+      setResponseMessage(response.message);
+      
+      setTimeout(() => {
+        onSuccess(response);
+      }, 2000);
+      
+    } catch (error) {
+      setPaymentStatus('error');
+      
+      // Guardar error para desarrollo
+      setRawResponseData(error instanceof Error ? { error: error.message } : error);
+      
+      // EXTRAER EL MENSAJE ESPECÍFICO DEL ERROR
+      let errorMessage = 'Error procesando el pago';
+      
+      if (error instanceof Error) {
+        // Usar directamente el mensaje del error (que ahora viene formateado del API)
+        errorMessage = error.message;
+        
+        // Solo para errores de validación del frontend, mantener mensajes específicos
+        if (error.message.includes('complete todos los campos')) {
+          errorMessage = 'Por favor complete todos los campos requeridos';
+        } else if (error.message.includes('Formato de fecha incorrecto')) {
+          errorMessage = 'Formato de fecha incorrecto. Use AAAA/MM (ej: 2027/10)';
+        } else if (error.message.includes('cédula debe tener')) {
+          errorMessage = error.message; // Mantener el mensaje específico de cédula
+        } else if (error.message.includes('Número de factura no disponible')) {
+          errorMessage = 'Número de factura no disponible';
+        }
+        // Para todos los demás errores, usar el mensaje que viene del API
       }
-      // Para todos los demás errores, usar el mensaje que viene del API
+      
+      setResponseMessage(errorMessage);
+      console.error('❌ Error técnico completo:', error);
     }
-    
-    setResponseMessage(errorMessage);
-    console.error('❌ Error técnico completo:', error);
-  }
-};
+  };
 
   const resetForm = () => {
     setPaymentStatus('idle');
@@ -134,8 +166,9 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
     setCardNumber('');
     setCvv('');
     setExpirationDate('');
-    setCustomerId(clientData.customerId || '');
-    setInvoiceNumber(clientData.invoiceNumber || clientData.orderId || ''); // Resetear al valor original
+    setIdType('V');
+    setIdNumber('');
+    setInvoiceNumber(clientData.invoiceNumber || clientData.orderId || '');
     setRawRequestData(null);
     setRawResponseData(null);
   };
@@ -145,10 +178,21 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
     setCardNumber(testData.cardNumber || '');
     setCvv(testData.cvv || '');
     setExpirationDate(testData.expirationDate?.replace(/\D/g, '') || '');
-    setCustomerId(testData.customerId || '');
+    
+    // Parsear customerId si viene en testData
+    if (testData.customerId) {
+      const match = testData.customerId.match(/^([VEJ])(\d+)$/);
+      if (match) {
+        setIdType(match[1] as IdType);
+        setIdNumber(match[2]);
+      }
+    } else {
+      setIdType(testData.idType || 'V');
+      setIdNumber(testData.idNumber || '');
+    }
+    
     setInvoiceNumber(testData.invoiceNumber || clientData.invoiceNumber || clientData.orderId || '');
   };
-
 
   // Estado de éxito
   if (paymentStatus === 'success') {
@@ -166,7 +210,9 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
             <p className="text-sm text-green-800">
               Referencia: {invoiceNumber}
             </p>
-            
+            <p className="text-sm text-green-800">
+              Cédula: {buildCustomerId(idType, idNumber)}
+            </p>
             <p className="text-sm text-green-800">
               Monto: ${clientData.amount.toFixed(2)}
             </p>
@@ -262,7 +308,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
                   cardNumber: '4110960300817842',
                   cvv: '330',
                   expirationDate: '202710',
-                  customerId: 'v8019884',
+                  idType: 'V',
+                  idNumber: '8019884',
                   invoiceNumber: 'TEST-' + Date.now().toString().slice(-6)
                 })}
                 className="text-xs bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded"
@@ -275,7 +322,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
                   cardNumber: '4110960300819999',
                   cvv: '999',
                   expirationDate: '202510',
-                  customerId: 'test999',
+                  idType: 'E',
+                  idNumber: '123456789',
                   invoiceNumber: 'INVALID-001'
                 })}
                 className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
@@ -288,7 +336,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
                   cardNumber: '',
                   cvv: '',
                   expirationDate: '',
-                  customerId: '',
+                  idType: 'V',
+                  idNumber: '',
                   invoiceNumber: clientData.invoiceNumber || clientData.orderId || ''
                 })}
                 className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
@@ -305,7 +354,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
               <div>Factura: {invoiceNumber || '---'}</div>
               <div>Tarjeta: {cardNumber || '---'}</div>
               <div>CVV: {cvv || '---'} | Expira: {expirationDate || '---'}</div>
-              <div>Customer ID: {customerId || '---'}</div>
+              <div>Cédula: {idType}-{idNumber || '---'}</div>
+              <div>Customer ID (API): {buildCustomerId(idType, idNumber) || '---'}</div>
             </div>
           </div>
 
@@ -391,7 +441,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-900  ">Fecha Expiración</label>
+            <label className="block text-sm font-medium mb-2 text-gray-900">Fecha Expiración</label>
             <input
               type="text"
               value={formatExpirationDate(expirationDate)}
@@ -406,17 +456,32 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
           </div>
         </div>
         
+        {/* Campo de Cédula dividido en tipo y número */}
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-2 text-gray-900">Cédula o Customer ID</label>
-          <input
-            type="text"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            placeholder="v8019884"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            required
-            disabled={paymentStatus === 'loading'}
-          />
+          <label className="block text-sm font-medium mb-2 text-gray-900">Cédula <span className="text-red-500">*</span></label>
+          <div className="flex gap-2">
+            <select
+              value={idType}
+              onChange={(e) => setIdType(e.target.value as IdType)}
+              className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              disabled={paymentStatus === 'loading'}
+            >
+              <option value="V">V</option>
+              <option value="E">E</option>
+              <option value="J">J</option>
+            </select>
+            <input
+              type="text"
+              value={idNumber}
+              onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="12345678"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
+              required
+              maxLength={10}
+              disabled={paymentStatus === 'loading'}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Entre 6 y 10 dígitos</p>
         </div>
 
         <button 
