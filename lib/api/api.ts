@@ -1,4 +1,4 @@
-import { PaymentRequest, PaymentResponse } from '@/lib/types/types';
+import { PaymentRequest, PaymentResponse } from '@/lib/types';
 
 const API_BASE_URL = 'https://connect-api-y3jc.onrender.com';
 

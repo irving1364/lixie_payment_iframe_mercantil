@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ClientData, PaymentRequest, PaymentResponse } from '@/lib/types';
-import { PaymentApi } from '@/lib/api';
+import { PaymentApi } from '@/lib/api/api';
 
 interface TdcPaymentProps {
   clientData: ClientData;
@@ -209,7 +209,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         </div>
       )}
      
-      <h2 className="text-2xl font-bold mb-6">
+      <h2 className="text-2xl font-bold mb-6 text-black">
         {mode === 'odoo' ? 'Pago con Tarjeta de Crédito' : 'Pago con Tarjeta de Crédito'}
       </h2>
       
@@ -218,7 +218,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         <button
           type="button"
           onClick={() => setShowDevPanel(!showDevPanel)}
-          className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+          className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-black"
         >
           {showDevPanel ? '👨‍💻 Ocultar Dev' : '👨‍💻 Mostrar Dev'}
         </button>
@@ -235,7 +235,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
             value={invoiceNumber}
             onChange={(e) => setInvoiceNumber(e.target.value)}
             placeholder="Ingrese el número de factura"
-            className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            className="w-full px-3 py-2 text-gray-900 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
             disabled={paymentStatus === 'loading'}
           />
         </div>
@@ -301,7 +301,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
           {/* Datos actuales del formulario */}
           <div className="mb-2">
             <label className="block text-sm font-medium text-yellow-700 mb-1">Datos actuales:</label>
-            <div className="text-xs space-y-1">
+            <div className="text-xs space-y-1 text-gray-900">
               <div>Factura: {invoiceNumber || '---'}</div>
               <div>Tarjeta: {cardNumber || '---'}</div>
               <div>CVV: {cvv || '---'} | Expira: {expirationDate || '---'}</div>
@@ -362,13 +362,13 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
       <form onSubmit={handlePayment}>
         {/* Campos del formulario */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">Número de Tarjeta</label>
+          <label className="block text-gray-900 text-sm font-medium mb-2">Número de Tarjeta</label>
           <input
             type="text"
             value={formatCardNumber(cardNumber)}
             onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
             placeholder="4110 9603 0081 7842"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
             required
             maxLength={19}
             disabled={paymentStatus === 'loading'}
@@ -377,13 +377,13 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium mb-2">CVV</label>
+            <label className="block text-sm text-gray-900 font-medium mb-2">CVV</label>
             <input
               type="text"
               value={cvv}
               onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="330"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
               required
               maxLength={4}
               disabled={paymentStatus === 'loading'}
@@ -391,13 +391,13 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-2">Fecha Expiración</label>
+            <label className="block text-sm font-medium mb-2 text-gray-900  ">Fecha Expiración</label>
             <input
               type="text"
               value={formatExpirationDate(expirationDate)}
               onChange={(e) => setExpirationDate(e.target.value.replace(/\D/g, ''))}
               placeholder="AAAA/MM"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
               required
               maxLength={7}
               disabled={paymentStatus === 'loading'}
@@ -407,13 +407,13 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         </div>
         
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Cédula o Customer ID</label>
+          <label className="block text-sm font-medium mb-2 text-gray-900">Cédula o Customer ID</label>
           <input
             type="text"
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             placeholder="v8019884"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             required
             disabled={paymentStatus === 'loading'}
           />
