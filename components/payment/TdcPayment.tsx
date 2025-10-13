@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClientData, PaymentRequest, PaymentResponse } from '@/lib/types';
 import { PaymentApi } from '@/lib/api/api';
 
@@ -29,8 +29,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
   const [rawResponseData, setRawResponseData] = useState<any>(null);
 
   // Extraer customerId existente si viene del clientData
-  useState(() => {
-    if (clientData.customerId) {
+  useEffect(() => {
+    if (clientData.customerId && typeof clientData.customerId === 'string') {
       // Intentar parsear el customerId existente para prellenar los campos
       const match = clientData.customerId.match(/^([VEJ])(\d+)$/);
       if (match) {
@@ -39,10 +39,16 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
       } else {
         // Si no coincide el patrón, usar valor por defecto
         setIdType('V');
-        setIdNumber(clientData.customerId.replace(/[^0-9]/g, ''));
+        // Asegurarse de que solo tome números
+        const numbersOnly = clientData.customerId.replace(/[^0-9]/g, '');
+        setIdNumber(numbersOnly);
       }
+    } else {
+      // Si no hay customerId o no es string, usar valores por defecto
+      setIdType('V');
+      setIdNumber('');
     }
-  });
+  }, [clientData.customerId]); // Dependencia del effect
 
   // Funciones de formateo
   const formatCardNumber = (value: string) => {
