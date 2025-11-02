@@ -1,19 +1,18 @@
 'use client';
 import { useEffect, useState } from 'react';
-import TddPayment from '@/components/payment/TddPayment';
-import { TddClientData } from '@/lib/types/tdd-types';
+import PaymentMobilePayment from '@/components/payment/PaymentMobilePayment';
+import { PaymentMobileClientData } from '@/lib/types/payment-mobile';
 
-// Interfaz para los parámetros de URL
 interface UrlParams {
-  data?: string; // Datos codificados en base64
-  return_url?: string; // URL de retorno para Odoo
-  origin?: string; // Dominio de origen (para seguridad)
+  data?: string;
+  return_url?: string;
+  origin?: string;
   mode?: 'odoo' | 'standalone';
-  language?: string; // Idioma
+  language?: string;
 }
 
-export default function TddPage() {
-  const [clientData, setClientData] = useState<TddClientData | null>(null);
+export default function PaymentMobilePage() {
+  const [clientData, setClientData] = useState<PaymentMobileClientData | null>(null); // ← Tipo específico
   const [isLoading, setIsLoading] = useState(true);
   const [urlParams, setUrlParams] = useState<UrlParams>({});
   const [isEmbedded, setIsEmbedded] = useState(false);
@@ -29,27 +28,31 @@ export default function TddPage() {
           data: urlParams.get('data') || undefined,
           return_url: urlParams.get('return_url') || undefined,
           origin: urlParams.get('origin') || undefined,
-          mode: 'odoo', // Siempre modo Odoo
+          mode: (urlParams.get('mode') as 'odoo' | 'standalone') || 'standalone',
           language: urlParams.get('language') || 'es'
         };
 
         setUrlParams(params);
-        console.log('🔗 Parámetros TDD recibidos:', params);
+        console.log('🔗 URL parameters received (Mobile Payment):', params);
 
-        // Validar que vengan datos desde Odoo
-        if (!params.data) {
-          throw new Error('Datos de pago no proporcionados. Este componente solo funciona integrado con Odoo.');
+        let clientData: PaymentMobileClientData; // ← Tipo específico
+
+        if (params.data) {
+          const decodedData = JSON.parse(atob(params.data)) as PaymentMobileClientData;
+          clientData = decodedData;
+        } else {
+          clientData = {
+            encryptedClient: "pXsM1bjazk/Gc7ASLqJLje4Hc8VR3MPD4Q+D8t46NMvTnPDDCz3ItgPpOby/5Rop",
+            encryptedMerchant: "JZb38y6vm/CKkGvZ2i+rxQ==",
+            encryptedKey: "l7GpQTyXBWnym0Q9mmATdwzisIqCSZlFPbkFs9azdmM=",
+            invoiceNumber: "PM-" + Date.now().toString().slice(-6),
+            amount: 100.50,
+            description: "Mobile Payment - Development mode"
+          };
         }
 
-        let clientData: TddClientData;
-
-        // Solo modo Odoo/ERP: datos desde URL parameters
-        const decodedData = JSON.parse(atob(params.data)) as TddClientData;
-        clientData = decodedData;
-
-        // Agregar metadata de la transacción
         clientData.metadata = {
-          source: 'odoo',
+          source: params.mode,
           returnUrl: params.return_url,
           origin: params.origin,
           language: params.language,
@@ -58,25 +61,23 @@ export default function TddPage() {
 
         setClientData(clientData);
 
-        // Notificar al parent que el iframe está listo
         if (window.parent !== window) {
           window.parent.postMessage({
             type: 'payment_iframe_loaded',
             status: 'ready',
-            mode: 'odoo',
-            method: 'tdd',
+            mode: params.mode,
+            method: 'payment_mobile',
             origin: window.location.origin
           }, params.origin || '*');
         }
 
       } catch (error) {
-        console.error('❌ Error cargando parámetros TDD:', error);
+        console.error('❌ Error loading parameters (Mobile Payment):', error);
         
-        // Notificar error al parent
         if (window.parent !== window) {
           window.parent.postMessage({
             type: 'payment_error',
-            message: 'Error inicializando pasarela de pago TDD'
+            message: 'Error initializing mobile payment gateway'
           }, urlParams.origin || '*');
         }
       } finally {
@@ -88,7 +89,7 @@ export default function TddPage() {
   }, []);
 
   const handlePaymentSuccess = (result: any) => {
-    console.log('✅ Pago TDD exitoso, notificando...', result);
+    console.log('✅ Mobile payment successful, notifying...', result);
     
     const messageData = {
       type: 'payment_success',
@@ -99,39 +100,37 @@ export default function TddPage() {
         currency: result.bank_response?.transaction_response?.currency,
         transaction_date: result.bank_response?.transaction_response?.processing_date,
         merchant_identify: result.bank_response?.merchant_identify,
+        payment_method: 'payment_mobile',
         raw_response: result
       },
       metadata: {
-        source: 'odoo',
-        method: 'tdd',
+        source: urlParams.mode,
         timestamp: new Date().toISOString()
       }
     };
 
-    // Comunicarse con el parent (Odoo/ERP)
     if (window.parent !== window) {
       window.parent.postMessage(messageData, urlParams.origin || '*');
     }
 
-    // Si hay return_url, redirigir (para casos de ventana popup)
     if (urlParams.return_url) {
       const returnUrl = new URL(urlParams.return_url);
       returnUrl.searchParams.set('transaction_id', result.bank_response?.transaction_response?.payment_reference);
       returnUrl.searchParams.set('status', 'success');
-      returnUrl.searchParams.set('method', 'tdd');
+      returnUrl.searchParams.set('method', 'payment_mobile');
       window.location.href = returnUrl.toString();
     }
   };
 
   const handlePaymentError = (message: string) => {
-    console.error('❌ Error en pago TDD:', message);
+    console.error('❌ Error in mobile payment:', message);
     
     const errorData = {
       type: 'payment_error',
       message: message,
       metadata: {
-        source: 'odoo',
-        method: 'tdd',
+        source: urlParams.mode,
+        method: 'payment_mobile',
         timestamp: new Date().toISOString()
       }
     };
@@ -140,12 +139,11 @@ export default function TddPage() {
       window.parent.postMessage(errorData, urlParams.origin || '*');
     }
 
-    // Si hay return_url, redirigir con error
     if (urlParams.return_url) {
       const returnUrl = new URL(urlParams.return_url);
       returnUrl.searchParams.set('status', 'error');
       returnUrl.searchParams.set('error_message', encodeURIComponent(message));
-      returnUrl.searchParams.set('method', 'tdd');
+      returnUrl.searchParams.set('method', 'payment_mobile');
       window.location.href = returnUrl.toString();
     }
   };
@@ -156,9 +154,11 @@ export default function TddPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">
-            Inicializando pasarela de pago TDD...
+            {isEmbedded ? 'Initializing Mobile Payment...' : 'Loading Mobile Payment...'}
           </p>
-          <p className="text-sm text-gray-500 mt-2">Conectando con Odoo</p>
+          {urlParams.mode === 'odoo' && (
+            <p className="text-sm text-gray-500 mt-2">Connecting with Odoo</p>
+          )}
         </div>
       </div>
     );
@@ -173,11 +173,16 @@ export default function TddPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </div>
-          <h3 className="text-lg font-bold mb-2">Error de configuración</h3>
-          <p className="text-sm">Este componente solo funciona integrado con Odoo</p>
-          <p className="text-xs text-gray-500 mt-2">
-            No se recibieron datos de pago válidos desde el sistema
-          </p>
+          <h3 className="text-lg font-bold mb-2">Configuration Error</h3>
+          <p className="text-sm">Could not load mobile payment data</p>
+          {!isEmbedded && (
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          )}
         </div>
       </div>
     );
@@ -185,12 +190,12 @@ export default function TddPage() {
 
   return (
     <div className={`bg-gray-50 min-h-screen flex items-center justify-center p-4`}>
-      <TddPayment 
-        clientData={clientData}
+      <PaymentMobilePayment 
+        PaymentMobileClientData={clientData}
         onSuccess={handlePaymentSuccess}
         onError={handlePaymentError}
         embedded={isEmbedded}
-        mode="odoo"
+        mode={urlParams.mode}
       />
     </div>
   );
