@@ -45,13 +45,15 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
   console.log('🔍 [RENDER] cardNumber:', cardNumber);
   console.log('🔍 [RENDER] cardName:', cardName);
 
-  // Configuración de tipos de tarjeta (incluyendo Zinli)
+  // Configuración de tipos de tarjeta (incluyendo Zinli) - ORDEN CORREGIDO
   const cardTypes: Record<string, CardTypeConfig> = {
+    // ZINLI PRIMERO - porque algunos BINs de Zinli empiezan con 4 y coincidirían con Visa
     zinli: {
       name: 'Zinli',
-      pattern: /^(402251|402276|404599|405632|406136|408137|409837|411436|411437|411438|412274|412275|413174|414709|415159|416708|418772|419132|419133|419991|419992|422149|422150|422151|422152|422153|422154|422155|424771|426369|427995|428935|428936|428937|429419|429420|429421|429422|429423|431361|433169|434769|434770|438864|441735|441736|441737|441738|446393|446394|447451|448274|448276|448277|448278|448279|449843|449844|449845|449846|449847|449848|451294|451295|455700|455701|455702|457103)/,
+      pattern: /^(402251|402276|404599|405632|406136|408137)/,
       issuer: 'zinli'
     },
+    // LUEGO LOS DEMÁS
     visa: {
       name: 'Visa',
       pattern: /^4/,
@@ -62,7 +64,6 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
       pattern: /^(5[1-5]|2[2-7])/,
       issuer: 'mastercard'
     }
-    
   };
 
   console.log('🔍 [CONFIG] cardTypes config loaded:', Object.keys(cardTypes));
@@ -85,7 +86,24 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
       return 'unknown';
     }
 
+    // Para debugging: mostrar qué BIN estamos probando
+    const firstSix = cleanNumber.substring(0, 6);
+    console.log('🔍 [DETECT_CARD_TYPE] first 6 digits:', firstSix);
+
+    // Probar Zinli primero (más específico)
+    console.log('🔍 [DETECT_CARD_TYPE] testing ZINLI first');
+    const zinliMatch = cardTypes.zinli.pattern.test(cleanNumber);
+    console.log('🔍 [DETECT_CARD_TYPE] ZINLI match result:', zinliMatch);
+    
+    if (zinliMatch) {
+      console.log('🔍 [DETECT_CARD_TYPE] ZINLI MATCH FOUND!');
+      return 'zinli';
+    }
+
+    // Luego probar los demás
     for (const [type, config] of Object.entries(cardTypes)) {
+      if (type === 'zinli') continue; // Ya probamos Zinli
+      
       console.log('🔍 [DETECT_CARD_TYPE] testing type:', type, 'pattern:', config.pattern);
       const isMatch = config.pattern.test(cleanNumber);
       console.log('🔍 [DETECT_CARD_TYPE]', type, 'match result:', isMatch);
@@ -134,12 +152,11 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
     return result;
   };
 
-
   const formatExpirationDate = (value: string) => {
-    const cleaned = value.replace(/\D/g, '').slice(0, 6); // Mantener 6 dígitos máximo
+    const cleaned = value.replace(/\D/g, '').slice(0, 6);
     let result = cleaned;
     if (cleaned.length > 4) {
-      result = cleaned.slice(0, 4) + '/' + cleaned.slice(4, 6); // Formato: AAAA/MM
+      result = cleaned.slice(0, 4) + '/' + cleaned.slice(4, 6);
     }
     console.log('🔍 [FORMAT_EXPIRATION_DATE] input:', value, 'output:', result);
     return result;
@@ -149,13 +166,11 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
     const cleaned = value.replace(/\D/g, '');
     let result = cleaned;
     if (cleaned.length >= 4) {
-      // Mantener formato AAAA/MM para display
       result = cleaned.slice(0, 4) + '/' + cleaned.slice(4, 6);
     }
     console.log('🔍 [FORMAT_DISPLAY_EXPIRY] input:', value, 'output:', result);
     return result;
   };
-
 
   const convertToApiDateFormat = (displayDate: string): string => {
     const cleaned = displayDate.replace(/\D/g, '');
@@ -340,8 +355,8 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
   console.log('🔍 [RENDER] Using ZinliCard?', detectedCardType === 'zinli');
 
   return (
-    <div className={`mx-auto p-6 bg-white rounded-lg shadow-lg ${
-      embedded ? 'w-full max-w-full' : 'max-w-4xl' }`}>
+    <div className={`mx-auto bg-white rounded-lg shadow-lg ${
+      embedded ? 'w-full max-w-full p-3' : 'max-w-4xl p-6' }`}>
          
       {/* Header condicional para modo Odoo */}
       {mode === 'odoo' && (
@@ -355,8 +370,9 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         </div>
       )}
      
-      <h2 className="text-2xl font-bold mb-6 text-black text-center">
-        {mode === 'odoo' ? 'Pago con Tarjeta de Crédito' : 'Pago con Tarjeta de Crédito'}
+      <h2 className={`font-bold mb-4 text-black text-center ${
+        mode === 'odoo' ? 'text-lg' : 'text-xl' }`}>
+        Pago con Tarjeta de Crédito
       </h2>
       
       {/* Botón para mostrar/ocultar panel de desarrollador */}
@@ -370,15 +386,41 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Columna izquierda: Vista de la tarjeta */}
-        <div className="space-y-6">
-          {/* Vista de la tarjeta con la librería personalizada */}
-          <div className="flex justify-center">
-            <div className="w-full max-w-[340px] relative">
-              {detectedCardType === 'zinli' ? (
-                <>
-                  
+      {/* Layout responsive */}
+      <div className="space-y-6">
+        
+        {/* Información de la transacción - Siempre arriba */}
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-blue-800 mb-1">
+              N° de Factura <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+              placeholder="Ingrese el número de factura"
+              className="w-full px-3 py-2 text-gray-900 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              disabled={paymentStatus === 'loading'}
+            />
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-blue-800">Monto a pagar:</span>
+            <span className="text-lg font-bold text-green-600">
+              ${clientData.amount.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Contenido principal en columnas responsive */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Columna 1: Tarjeta visual */}
+          <div className="space-y-4">
+            {/* Vista de la tarjeta */}
+            <div className="flex justify-center">
+              <div className="w-full max-w-[300px] relative">
+                {detectedCardType === 'zinli' ? (
                   <ZinliCard
                     number={cardNumber}
                     name={cardName || "TITULAR DE LA TARJETA"}
@@ -386,10 +428,7 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
                     cvc={cvv}
                     focused={cardFocus}
                   />
-                </>
-              ) : (
-                <>
-                  
+                ) : (
                   <CustomCreditCard
                     number={cardNumber}
                     name={cardName || "TITULAR DE LA TARJETA"}
@@ -398,301 +437,281 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
                     focused={cardFocus}
                     issuer={getIssuer()}
                   />
-                </>
-              )}
+                )}
+              </div>
             </div>
+
+            {/* Indicador del tipo de tarjeta detectado */}
+            {detectedCardType !== 'unknown' && (
+              <div className="text-center">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                  detectedCardType === 'zinli' ? 'bg-purple-100 text-purple-800' :
+                  detectedCardType === 'visa' ? 'bg-blue-100 text-blue-800' :
+                  detectedCardType === 'mastercard' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {cardTypes[detectedCardType]?.name || 'Tarjeta'} detectada
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Indicador del tipo de tarjeta detectado */}
-          {detectedCardType !== 'unknown' && (
-            <div className="text-center">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                detectedCardType === 'zinli' ? 'bg-purple-100 text-purple-800' :
-                detectedCardType === 'visa' ? 'bg-blue-100 text-blue-800' :
-                detectedCardType === 'mastercard' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {cardTypes[detectedCardType]?.name || 'Tarjeta'} detectada
-              </span>
-            </div>
-          )}
-
-          {/* Información de la transacción */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-blue-800 mb-1">
-                N° de Factura <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                placeholder="Ingrese el número de factura"
-                className="w-full px-3 py-2 text-gray-900 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                disabled={paymentStatus === 'loading'}
-              />
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-blue-800">Monto a pagar:</span>
-              <span className="text-lg font-bold text-green-600">
-                ${clientData.amount.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Columna derecha: Formulario */}
-        <div>
-          {/* Panel de desarrollador */}
-          {showDevPanel && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h4 className="font-bold text-yellow-800 mb-2">🧪 Panel de Desarrollo - DEBUG</h4>
-              
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded">
-                <h5 className="font-bold text-red-800 text-sm">🔍 DEBUG INFO:</h5>
-                <div className="text-xs space-y-1 text-gray-900">
-                  <div>detectedCardType: <strong>{detectedCardType}</strong></div>
-                  <div>cardNumber: {cardNumber || '---'}</div>
-                  <div>Using Component: <strong>{detectedCardType === 'zinli' ? 'ZinliCard' : 'CustomCreditCard'}</strong></div>
+          {/* Columna 2: Formulario */}
+          <div className="space-y-4">
+            {/* Panel de desarrollador */}
+            {showDevPanel && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="font-bold text-yellow-800 mb-2 text-sm">🧪 Panel de Desarrollo - DEBUG</h4>
+                
+                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded">
+                  <h5 className="font-bold text-red-800 text-xs">🔍 DEBUG INFO:</h5>
+                  <div className="text-xs space-y-1 text-gray-900">
+                    <div>detectedCardType: <strong>{detectedCardType}</strong></div>
+                    <div>cardNumber: {cardNumber || '---'}</div>
+                    <div>Using Component: <strong>{detectedCardType === 'zinli' ? 'ZinliCard' : 'CustomCreditCard'}</strong></div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Datos de prueba rápidos */}
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-yellow-700 mb-1">Datos de prueba:</label>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fillWithData({
-                      cardNumber: '4110960300817842',
-                      cvv: '330',
-                      expirationDate: '202710', // AAAA/MM format
-                      cardName: 'TITULAR VISA',
-                      idType: 'V',
-                      idNumber: '8019884',
-                      invoiceNumber: 'VISA-' + Date.now().toString().slice(-6)
-                    })}
-                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
-                  >
-                    Visa Test
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => fillWithData({
-                      cardNumber: '4022760000000001',
-                      cvv: '123', // Solo 3 dígitos
-                      expirationDate: '2025/10', // Formato AAAA/MM
-                      cardName: 'TITULAR ZINLI',
-                      idType: 'V',
-                      idNumber: '12345678',
-                      invoiceNumber: 'ZINLI-' + Date.now().toString().slice(-6)
-                    })}
-                    className="text-xs bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded"
-                  >
-                    Zinli Test
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillWithData({
-                      cardNumber: '5112345678901234',
-                      cvv: '456',
-                      expirationDate: '202512', // AAAA/MM format
-                      cardName: 'TITULAR MASTERCARD',
-                      idType: 'V',
-                      idNumber: '87654321',
-                      invoiceNumber: 'MC-' + Date.now().toString().slice(-6)
-                    })}
-                    className="text-xs bg-red-500 hover:bg-red-600 text-white px-2py-1 rounded"
-                  >
-                    Mastercard Test
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillWithData({
-                      cardNumber: '',
-                      cvv: '',
-                      expirationDate: '',
-                      cardName: '',
-                      idType: 'V',
-                      idNumber: '',
-                      invoiceNumber: clientData.invoiceNumber || clientData.orderId || ''
-                    })}
-                    className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
-                  >
-                    Limpiar
-                  </button>
+                {/* Datos de prueba rápidos */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-yellow-700 mb-1">Datos de prueba:</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fillWithData({
+                        cardNumber: '4110960300817842',
+                        cvv: '330',
+                        expirationDate: '202710',
+                        cardName: 'TITULAR VISA',
+                        idType: 'V',
+                        idNumber: '8019884',
+                        invoiceNumber: 'VISA-' + Date.now().toString().slice(-6)
+                      })}
+                      className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded"
+                    >
+                      Visa Test
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillWithData({
+                        cardNumber: '4022760000000001',
+                        cvv: '123',
+                        expirationDate: '202710',
+                        cardName: 'TITULAR ZINLI',
+                        idType: 'V',
+                        idNumber: '12345678',
+                        invoiceNumber: 'ZINLI-' + Date.now().toString().slice(-6)
+                      })}
+                      className="text-xs bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded"
+                    >
+                      Zinli Test
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillWithData({
+                        cardNumber: '5112345678901234',
+                        cvv: '456',
+                        expirationDate: '202512',
+                        cardName: 'TITULAR MASTERCARD',
+                        idType: 'V',
+                        idNumber: '87654321',
+                        invoiceNumber: 'MC-' + Date.now().toString().slice(-6)
+                      })}
+                      className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+                    >
+                      Mastercard Test
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillWithData({
+                        cardNumber: '',
+                        cvv: '',
+                        expirationDate: '',
+                        cardName: '',
+                        idType: 'V',
+                        idNumber: '',
+                        invoiceNumber: clientData.invoiceNumber || clientData.orderId || ''
+                      })}
+                      className="text-xs bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {/* Datos actuales del formulario */}
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-yellow-700 mb-1">Datos actuales:</label>
-                <div className="text-xs space-y-1 text-gray-900">
-                  <div>Factura: {invoiceNumber || '---'}</div>
-                  <div>Tarjeta: {cardNumber || '---'}</div>
-                  <div>CVV: {cvv || '---'} | Expira: {expirationDate || '---'}</div>
-                  <div>Nombre: {cardName || '---'}</div>
-                  <div>Cédula: {idType}-{idNumber || '---'}</div>
-                  <div>Customer ID (API): {buildCustomerId(idType, idNumber) || '---'}</div>
-                  <div>Tipo detectado: {cardTypes[detectedCardType]?.name || '---'}</div>
-                  <div>Issuer: {getIssuer() || '---'}</div>
+                {/* Datos actuales del formulario */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium text-yellow-700 mb-1">Datos actuales:</label>
+                  <div className="text-xs space-y-1 text-gray-900">
+                    <div>Factura: {invoiceNumber || '---'}</div>
+                    <div>Tarjeta: {cardNumber || '---'}</div>
+                    <div>CVV: {cvv || '---'} | Expira: {expirationDate || '---'}</div>
+                    <div>Nombre: {cardName || '---'}</div>
+                    <div>Cédula: {idType}-{idNumber || '---'}</div>
+                    <div>Customer ID (API): {buildCustomerId(idType, idNumber) || '---'}</div>
+                    <div>Tipo detectado: {cardTypes[detectedCardType]?.name || '---'}</div>
+                    <div>Issuer: {getIssuer() || '---'}</div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Request/Response anteriores */}
-              {rawRequestData && (
-                <div className="mt-2">
-                  <details>
-                    <summary className="cursor-pointer text-sm font-medium text-yellow-700">
-                      Último Request ↆ
-                    </summary>
-                    <pre className="text-xs bg-black text-green-400 p-2 rounded mt-1 overflow-auto max-h-32">
-                      {JSON.stringify(rawRequestData, null, 2)}
-                    </pre>
-                  </details>
+                {/* Request/Response anteriores */}
+                {rawRequestData && (
+                  <div className="mt-2">
+                    <details>
+                      <summary className="cursor-pointer text-sm font-medium text-yellow-700">
+                        Último Request ↆ
+                      </summary>
+                      <pre className="text-xs bg-black text-green-400 p-2 rounded mt-1 overflow-auto max-h-32">
+                        {JSON.stringify(rawRequestData, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mensaje de error */}
+            {paymentStatus === 'error' && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span className="text-red-800 font-medium">Error en el pago</span>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Mensaje de error */}
-          {paymentStatus === 'error' && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span className="text-red-800 font-medium">Error en el pago</span>
-              </div>
-              <p className="text-red-600 text-sm mt-1">{responseMessage}</p>
-              <button
-                onClick={() => setPaymentStatus('idle')}
-                className="text-red-600 hover:text-red-800 text-sm underline mt-2"
-              >
-                Intentar nuevamente
-              </button>
-            </div>
-          )}
-
-          <form onSubmit={handlePayment}>
-            {/* Nombre del titular */}
-            <div className="mb-4">
-              <label className="block text-gray-900 text-sm font-medium mb-2">
-                Nombre del Titular <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={cardName}
-                onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                onFocus={() => setCardFocus('name')}
-                placeholder="JUAN PEREZ"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 uppercase"
-                required
-                disabled={paymentStatus === 'loading'}
-              />
-            </div>
-
-            {/* Número de tarjeta */}
-            <div className="mb-4">
-              <label className="block text-gray-900 text-sm font-medium mb-2">
-                Número de Tarjeta <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formatCardNumber(cardNumber)}
-                onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
-                onFocus={() => setCardFocus('number')}
-                placeholder="4110 9603 0081 7842"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
-                required
-                maxLength={19}
-                disabled={paymentStatus === 'loading'}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm text-gray-900 font-medium mb-2">
-                  CVV <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={cvv}
-                  onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  onFocus={() => setCardFocus('cvc')}
-                  placeholder="330"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
-                  required
-                  maxLength={3}
-                  disabled={paymentStatus === 'loading'}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-900">
-                  Fecha Expiración <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formatExpirationDate(expirationDate)}
-                  onChange={(e) => setExpirationDate(e.target.value.replace(/\D/g, ''))}
-                  onFocus={() => setCardFocus('expiry')}
-                  placeholder="2025/10"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
-                  required
-                  maxLength={7} // AAAA/MM = 7 caracteres
-                  disabled={paymentStatus === 'loading'}
-                />
-                <p className="text-xs text-gray-500 mt-1">Formato: AAAA/MM (ej: 2025/10 para Oct 2025)</p>
-              </div>
-            </div>
-            
-            {/* Campo de Cédula */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-2 text-gray-900">
-                Cédula <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={idType}
-                  onChange={(e) => setIdType(e.target.value as IdType)}
-                  className="w-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                  disabled={paymentStatus === 'loading'}
+                <p className="text-red-600 text-sm mt-1">{responseMessage}</p>
+                <button
+                  onClick={() => setPaymentStatus('idle')}
+                  className="text-red-600 hover:text-red-800 text-sm underline mt-2"
                 >
-                  <option value="V">V</option>
-                  <option value="E">E</option>
-                  <option value="J">J</option>
-                </select>
-                <input
-                  type="text"
-                  value={idNumber}
-                  onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="12345678"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900"
-                  required
-                  maxLength={10}
-                  disabled={paymentStatus === 'loading'}
-                />
+                  Intentar nuevamente
+                </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Entre 6 y 10 dígitos</p>
-            </div>
+            )}
 
-            <button 
-              type="submit" 
-              disabled={paymentStatus === 'loading'}
-              className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium"
-            >
-              {paymentStatus === 'loading' ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Procesando Pago...
+            <form onSubmit={handlePayment} className="space-y-4">
+              <div className="space-y-3">
+                {/* Nombre del titular */}
+                <div>
+                  <label className="block text-gray-900 text-sm font-medium mb-1">
+                    Nombre del Titular <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cardName}
+                    onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                    onFocus={() => setCardFocus('name')}
+                    placeholder="JUAN PEREZ"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 uppercase text-sm"
+                    required
+                    disabled={paymentStatus === 'loading'}
+                  />
                 </div>
-              ) : (
-                'Realizar Pago'
-              )}
-            </button>
-          </form>
+
+                {/* Número de tarjeta */}
+                <div>
+                  <label className="block text-gray-900 text-sm font-medium mb-1">
+                    Número de Tarjeta <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formatCardNumber(cardNumber)}
+                    onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
+                    onFocus={() => setCardFocus('number')}
+                    placeholder="4110 9603 0081 7842"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900 text-sm"
+                    required
+                    maxLength={19}
+                    disabled={paymentStatus === 'loading'}
+                  />
+                </div>
+                
+                {/* CVV y Fecha en grid responsive */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-gray-900 font-medium mb-1">
+                      CVV <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={cvv}
+                      onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                      onFocus={() => setCardFocus('cvc')}
+                      placeholder="123"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900 text-sm"
+                      required
+                      maxLength={3}
+                      disabled={paymentStatus === 'loading'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">3 dígitos</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-900">
+                      Fecha Expiración <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formatExpirationDate(expirationDate)}
+                      onChange={(e) => setExpirationDate(e.target.value.replace(/\D/g, ''))}
+                      onFocus={() => setCardFocus('expiry')}
+                      placeholder="2025/10"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900 text-sm"
+                      required
+                      maxLength={7}
+                      disabled={paymentStatus === 'loading'}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Formato: AAAA/MM</p>
+                  </div>
+                </div>
+                
+                {/* Campo de Cédula */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-900">
+                    Cédula <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={idType}
+                      onChange={(e) => setIdType(e.target.value as IdType)}
+                      className="w-20 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm"
+                      disabled={paymentStatus === 'loading'}
+                    >
+                      <option value="V">V</option>
+                      <option value="E">E</option>
+                      <option value="J">J</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={idNumber}
+                      onChange={(e) => setIdNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="12345678"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-gray-900 text-sm"
+                      required
+                      maxLength={10}
+                      disabled={paymentStatus === 'loading'}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Entre 6 y 10 dígitos</p>
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={paymentStatus === 'loading'}
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium text-sm"
+              >
+                {paymentStatus === 'loading' ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Procesando Pago...
+                  </div>
+                ) : (
+                  'Realizar Pago'
+                )}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
