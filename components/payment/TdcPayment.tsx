@@ -359,16 +359,6 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
       embedded ? 'w-full max-w-full p-3' : 'max-w-4xl p-6' }`}>
          
       {/* Header condicional para modo Odoo */}
-      {mode === 'odoo' && (
-        <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded">
-          <div className="flex items-center">
-            <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-            <span className="text-blue-800 font-medium">Pago seguro a través de Odoo</span>
-          </div>
-        </div>
-      )}
      
       <h2 className={`font-bold mb-4 text-black text-center ${
         mode === 'odoo' ? 'text-lg' : 'text-xl' }`}>
@@ -391,22 +381,16 @@ export default function TdcPayment({ clientData, onSuccess, onError, embedded = 
         
         {/* Información de la transacción - Siempre arriba */}
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-blue-800 mb-1">
-              N° de Factura <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={invoiceNumber}
-              onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder="Ingrese el número de factura"
-              className="w-full px-3 py-2 text-gray-900 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-              disabled={paymentStatus === 'loading'}
-            />
+          
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-blue-800"> N° de Factura:</span>
+            <span className="text-lg font-bold text-black">
+              {invoiceNumber}
+            </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-blue-800">Monto a pagar:</span>
-            <span className="text-lg font-bold text-green-600">
+            <span className="text-lg font-bold text-black">
               ${clientData.amount.toFixed(2)}
             </span>
           </div>
