@@ -31,6 +31,8 @@
     const [isAuthRequested, setIsAuthRequested] = useState(false);
     const [accountType, setAccountType] = useState('CC');
 
+    const [bypassOtpValidation, setBypassOtpValidation] = useState(false);
+
     // Extraer customerId existente si viene del clientData
     useEffect(() => {
         if (clientData.customerId && typeof clientData.customerId === 'string') {
@@ -135,8 +137,10 @@
             try {
                 // Validaciones completas
                 if (!cardNumber || !cvv || !expirationDate || !idNumber || !invoiceNumber || !otp) {
-                throw new Error('Por favor complete todos los campos incluyendo la OTP');
+                    throw new Error('Por favor complete todos los campos incluyendo la OTP');
                 }
+                
+
 
                 if (idNumber.length < 6 || idNumber.length > 10) {
                 throw new Error('La cédula debe tener entre 6 y 10 dígitos');
@@ -148,8 +152,8 @@
                 throw new Error('Formato de fecha incorrecto. Use AAAA/MM (ej: 2027/10)');
                 }
 
-                if (!authData) {
-                throw new Error('Primero debe solicitar la clave OTP');
+                if (!authData && !bypassOtpValidation) {
+                    throw new Error('Primero debe solicitar la clave OTP');
                 }
 
                 const customerId = buildCustomerId(idType, idNumber);
@@ -331,9 +335,25 @@
 
         {/* Panel de desarrollador */}
         {showDevPanel && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="mb-4 p-3 bg-yellow-50 bypassOtpValidation0 border-yellow-200 rounded-lg">
             <h4 className="font-bold text-yellow-800 mb-2">🧪 Panel de Desarrollo - TDD</h4>
             
+            <div className="mb-3">
+                <label className="block text-sm font-medium text-yellow-700 mb-1">Configuración de Desarrollo:</label>
+                <div className="flex items-center">
+                    <input
+                        type="checkbox"
+                        id="bypassOtpValidation"
+                        checked={bypassOtpValidation}
+                        onChange={(e) => setBypassOtpValidation(e.target.checked)}
+                        className="mr-2 h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="bypassOtpValidation" className="text-sm text-gray-900">
+                        Saltar validación de OTP
+                    </label>
+                </div>
+            </div>
+
             {/* Datos de prueba rápidos */}
             <div className="mb-3">
                 <label className="block text-sm font-medium text-yellow-700 mb-1">Datos de prueba TDD:</label>
@@ -596,18 +616,22 @@
             </div>
 
             <button 
-            type="submit" 
-            disabled={paymentStatus === 'loading' || paymentStatus === 'processing' || !isAuthRequested}
-            className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium"
+                type="submit" 
+                disabled={
+                    paymentStatus === 'loading' || 
+                    paymentStatus === 'processing' || 
+                    (!isAuthRequested && !bypassOtpValidation) // <-- Condición modificada
+                }
+                className="w-full px-4 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 transition-colors font-medium"
             >
-            {paymentStatus === 'processing' ? (
-                <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Procesando Pago...
-                </div>
-            ) : (
-                'Realizar Pago'
-            )}
+                {paymentStatus === 'processing' ? (
+                    <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Procesando Pago...
+                    </div>
+                ) : (
+                    'Realizar Pago'
+                )}
             </button>
         </form>
         </div>
