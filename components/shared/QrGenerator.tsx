@@ -18,7 +18,7 @@ export default function QrGenerator({
   encryptedMerchant,
   encryptedKey,
   merchantName = 'Mi Comercio',
-  baseUrl = 'https://lixie-payment-iframe-mercantil-o4ep.vercel.app'
+  baseUrl = 'https://lixie-payment-iframe-mercantil-o4ep.vercel.app/'
 }: QrGeneratorProps) {
   const [showQr, setShowQr] = useState(false);
   const [qrSize, setQrSize] = useState(256);
@@ -52,11 +52,11 @@ export default function QrGenerator({
       
       // Determinar la ruta según el tipo de servicio
       const routes = {
-        'tdc': 'Mercantil/payment/tdc',
-        'tdd': 'Mercantil/payment/tdd', 
-        'payment-mobile': 'Mercantil/payment/payment-mobile',
-        'search-transfers': 'Mercantil/search/transfers',
-        'search-mobile-payments': 'Mercantil/search/mobile-payments'
+        'tdc': '/Mercantil/payment/tdc',
+        'tdd': '/Mercantil/payment/tdd', 
+        'payment-mobile': '/Mercantil/payment/payment-mobile',
+        'search-transfers': '/Mercantil/search/transfers',
+        'search-mobile-payments': '/Mercantil/search/mobile-payments'
       };
 
       const route = routes[serviceType];
