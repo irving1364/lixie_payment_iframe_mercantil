@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "npm install --legacy-peer-deps --force && next build",
+  "installCommand": "npm install --legacy-peer-deps --force",
+  "framework": "nextjs"
+}
