@@ -52,11 +52,11 @@ export default function QrGenerator({
       
       // Determinar la ruta según el tipo de servicio
       const routes = {
-        'tdc': '/payment/tdc',
-        'tdd': '/payment/tdd', 
-        'payment-mobile': '/payment/payment-mobile',
-        'search-transfers': '/search/transfers',
-        'search-mobile-payments': '/search/mobile-payments'
+        'tdc': 'Mercantil/payment/tdc',
+        'tdd': 'Mercantil/payment/tdd', 
+        'payment-mobile': 'Mercantil/payment/payment-mobile',
+        'search-transfers': 'Mercantil/search/transfers',
+        'search-mobile-payments': 'Mercantil/search/mobile-payments'
       };
 
       const route = routes[serviceType];

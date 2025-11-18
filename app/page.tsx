@@ -182,6 +182,7 @@ export default function HomePage() {
                     .map((service, index) => (
                     <Link 
                       key={index} 
+                      target="_blank" 
                       href={service.path} 
                       className="block bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl transition-all duration-300 hover:border-purple-500 group relative overflow-hidden"
                     >
@@ -281,35 +282,42 @@ export default function HomePage() {
 
 
           
-          <Link href="/generate-qr" className="block bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl transition-all duration-300 hover:border-purple-500 group relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-50 to-pink-50 rounded-bl-full"></div>
-            
-            <div className="flex items-start mb-6 relative z-10">
-              <div className="text-3xl mr-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-xl">
-                🎯
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
-                  Generador de QR
-                </h3>
-                <p className="text-gray-600 mt-2">Crea códigos QR para tus pasarelas de pago</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between mt-6 relative z-10">
-              <span className="text-purple-600 font-medium">Generar QR</span>
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              </div>
-            </div>
-          </Link>
+          
 
 
           
           <div className="grid grid-cols-1 md:grid-cols-1 gap-8 max-w-2xl mx-auto">
-            {additionalServices.map((service, index) => (
+
+            <Link href="/generate-qr" target='_blank' className="block bg-white border border-gray-200 rounded-2xl p-8 hover:shadow-xl transition-all duration-300 hover:border-purple-500 group relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-50 to-pink-50 rounded-bl-full"></div>
+                
+                <div className="flex items-start mb-6 relative z-10">
+                  <div className="text-3xl mr-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 rounded-xl">
+                    🎯
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                      Generador de QR
+                    </h3>
+                    <p className="text-gray-600 mt-2">Crea códigos QR para tus pasarelas de pago</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between mt-6 relative z-10">
+                  <span className="text-purple-600 font-medium">Generar QR</span>
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </div>
+                </div>
+              </Link>  
+
+
+            {/* additionalServices.map((service, index) => (
+
+              
+
               <Link 
                 key={index} 
                 href={service.path} 
@@ -344,7 +352,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </Link>
-            ))}
+            ))*/}
           </div>
         </div>
       </section>
