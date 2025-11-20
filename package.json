@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm install --legacy-peer-deps --force && next build",
+     "build": "npm install --legacy-peer-deps --force && npx tailwindcss --version && next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -25,7 +25,8 @@
     "eslint-config-next": "15.5.3",
     "typescript": "^5",
     "@tailwindcss/postcss": "4.0.0",
-    "tailwindcss": "4.0.0"
+    "tailwindcss": "4.0.0",
+    "postcss": "^8"
   },
   "overrides": {
     "react-credit-cards-2": {
