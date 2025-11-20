@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import TdcPayment from '@/components/payment/TdcPayment';
+import TdcPayment from '../../../../components/payment/TdcPayment'
 import { ClientData } from '@/lib/types';
 
 // Interfaz para los parámetros de URL

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import PaymentMobilePayment from '@/components/payment/PaymentMobilePayment';
+import PaymentMobilePayment from '../../../../components/payment/PaymentMobilePayment';
 import { PaymentMobileClientData } from '@/lib/types/payment-mobile';
 
 interface UrlParams {
