@@ -110,6 +110,7 @@ export default function PaymentMobilePayment({ PaymentMobileClientData, onSucces
       }
 
       if (originPhoneNumber.length !== 10) {
+        console.log(originPhoneNumber);
         throw new Error('Su número telefónico debe tener 10 dígitos');
       }
 

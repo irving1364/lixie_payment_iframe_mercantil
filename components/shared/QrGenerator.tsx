@@ -1,7 +1,6 @@
-
 'use client';
 import { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react'; 
+import QRCode from 'react-qr-code'; 
 
 interface QrGeneratorProps {
   serviceType: 'tdc' | 'tdd' | 'payment-mobile' | 'search-transfers' | 'search-mobile-payments';
@@ -23,7 +22,7 @@ export default function QrGenerator({
   const [showQr, setShowQr] = useState(false);
   const [qrSize, setQrSize] = useState(256);
   const [paymentUrl, setPaymentUrl] = useState('');
-  const [amount, setAmount] = useState<number>(100.50); // ✅ Agregar campo amount
+  const [amount, setAmount] = useState<number>(100.50);
   const [invoiceNumber, setInvoiceNumber] = useState('');
 
   // Generar número de factura automáticamente
@@ -34,23 +33,20 @@ export default function QrGenerator({
   // Mover la generación de URL a useEffect
   useEffect(() => {
     const generatePaymentUrl = () => {
-      // ✅ INCLUIR TODOS LOS CAMPOS REQUERIDOS
       const paymentData = {
         encryptedClient,
         encryptedMerchant, 
         encryptedKey,
-        amount: amount, // ✅ REQUERIDO
-        invoiceNumber: invoiceNumber, // ✅ REQUERIDO
-        description: `Pago ${merchantName} - ${getServiceName(serviceType)}`, // ✅ RECOMENDADO
-        customerId: "v8019884", // ✅ OPCIONAL pero recomendado
+        amount: amount,
+        invoiceNumber: invoiceNumber,
+        description: `Pago ${merchantName} - ${getServiceName(serviceType)}`,
+        customerId: "v8019884",
         timestamp: new Date().toISOString(),
         merchant: merchantName
       };
 
-      // Codificar los datos en base64
       const encodedData = btoa(JSON.stringify(paymentData));
       
-      // Determinar la ruta según el tipo de servicio
       const routes = {
         'tdc': '/payment/tdc',
         'tdd': '/payment/tdd', 
@@ -183,7 +179,7 @@ export default function QrGenerator({
         {showQr && paymentUrl && (
           <div className="flex flex-col items-center space-y-4 p-4 border-2 border-dashed border-gray-300 rounded-lg">
             <div className="bg-white p-4 rounded-lg shadow-sm">
-              <QRCodeSVG
+              <QRCode
                 id="qr-code"
                 value={paymentUrl}
                 size={qrSize}
